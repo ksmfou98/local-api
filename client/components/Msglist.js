@@ -17,6 +17,7 @@ const originalMsg = Array(50)
 
 const MsgList = () => {
   const [msgs, setMsgs] = useState(originalMsg);
+
   const [editingId, setEditingId] = useState(null);
 
   const onCreate = (text) => {
