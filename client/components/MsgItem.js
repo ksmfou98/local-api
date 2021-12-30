@@ -9,6 +9,7 @@ const MsgItem = ({
   isEditing,
   startEdit,
   onDelete,
+  myId,
 }) => {
   return (
     <li className="messages__item">
@@ -27,10 +28,12 @@ const MsgItem = ({
       </h3>
       {isEditing ? <MsgInput mutate={onUpdate} id={id} text={text} /> : text}
 
-      <div className="messages__buttons">
-        <button onClick={() => startEdit(id)}>수정</button>
-        <button onClick={() => onDelete(id)}>삭제</button>
-      </div>
+      {myId === userId && (
+        <div className="messages__buttons">
+          <button onClick={() => startEdit(id)}>수정</button>
+          <button onClick={() => onDelete(id)}>삭제</button>
+        </div>
+      )}
     </li>
   );
 };

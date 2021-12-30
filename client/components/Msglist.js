@@ -1,51 +1,58 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import fetcher from "../fetcher";
 import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 
 const UserIds = ["roy", "jay"];
 const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
-const originalMsg = Array(50)
-  .fill(0)
-  .map((_, i) => ({
-    id: i + 1,
-    userId: getRandomUserId(),
-    timestamp: 1234567890123 + i * 1000 * 60,
-    text: `${i + 1} mock text`,
-  }))
-  .reverse();
-
 const MsgList = () => {
-  const [msgs, setMsgs] = useState(originalMsg);
+  const {
+    query: { userId = "" },
+  } = useRouter();
 
+  const [msgs, setMsgs] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  const onCreate = (text) => {
-    const newMsg = {
-      id: msgs.length + 1,
-      userId: getRandomUserId(),
-      timestamp: Date.now(),
-      text: `${msgs.length + 1} ${text}`,
-    };
+  const onCreate = async (text) => {
+    const newMsg = await fetcher("post", "/messages", {
+      text,
+      userId,
+    });
+    if (!newMsg) throw Error("something wrong");
     setMsgs((msgs) => [newMsg, ...msgs]);
   };
 
-  const onUpdate = (text, id) => {
-    setMsgs((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, text } : item))
-    );
+  const onUpdate = async (text, id) => {
+    const newMsg = await fetcher("put", `/messages/${id}`, { text, userId });
+    if (!newMsg) throw Error("something wrong");
+    setMsgs((prev) => prev.map((item) => (item.id === id ? newMsg : item)));
     setEditingId(null);
   };
 
-  const onDelete = (id) => {
-    setMsgs((prev) => prev.filter((item) => item.id !== id));
+  const onDelete = async (id) => {
+    const receviedId = await fetcher("delete", `/messages/${id}`, {
+      params: { userId },
+    }); // query string을 params로 보내게 되면 서버에서 query로 받게됌
+    console.log(receviedId);
+    setMsgs((prev) => prev.filter((item) => item.id !== String(receviedId)));
   };
 
   const startEdit = (id) => setEditingId(id);
 
+  const getMessages = async () => {
+    const response = await fetcher("get", "/messages");
+    setMsgs(response);
+  };
+
+  useEffect(() => {
+    getMessages();
+  }, []);
+
   return (
     <>
-      <MsgInput mutate={onCreate} />
+      {userId && <MsgInput mutate={onCreate} />}
       <ul className="messages">
         {msgs.map((x) => (
           <MsgItem
@@ -55,6 +62,7 @@ const MsgList = () => {
             startEdit={startEdit}
             isEditing={x.id === editingId}
             onDelete={onDelete}
+            myId={userId}
           />
         ))}
       </ul>
