@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import fetcher from "../fetcher";
 import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
-
-const UserIds = ["roy", "jay"];
-const getRandomUserId = () => UserIds[Math.round(Math.random())];
+import useInfiniteScroll from "../hooks/useInfiniteScroll";
 
 const MsgList = () => {
   const {
@@ -14,6 +12,9 @@ const MsgList = () => {
 
   const [msgs, setMsgs] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [hasNext, setHasNext] = useState(true);
+  const fetchMoreEl = useRef(null);
+  const intersecting = useInfiniteScroll(fetchMoreEl);
 
   const onCreate = async (text) => {
     const newMsg = await fetcher("post", "/messages", {
@@ -42,13 +43,19 @@ const MsgList = () => {
   const startEdit = (id) => setEditingId(id);
 
   const getMessages = async () => {
-    const response = await fetcher("get", "/messages");
-    setMsgs(response);
+    const response = await fetcher("get", "/messages", {
+      params: { cursor: msgs[msgs.length - 1]?.id || "" },
+    });
+    if (response.length === 0) {
+      setHasNext(false);
+      return;
+    }
+    setMsgs((prev) => prev.concat(response));
   };
 
   useEffect(() => {
-    getMessages();
-  }, []);
+    if (intersecting && hasNext) getMessages();
+  }, [intersecting]);
 
   return (
     <>
@@ -66,6 +73,8 @@ const MsgList = () => {
           />
         ))}
       </ul>
+      {/** 화면 상에 이 div가 나타나면 추가 데이터를 요청해라 */}
+      <div ref={fetchMoreEl} />
     </>
   );
 };
